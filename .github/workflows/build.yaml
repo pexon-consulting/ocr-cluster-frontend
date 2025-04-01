@@ -19,7 +19,7 @@ env:
   AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
   REPOSITORY_OWNER: ${GITHUB_REPOSITORY_OWNER}
   CI: false
-  REGISTRY: ${{ secrets.REGISTRY }}
+  REGISTRY: ${{ vars.REGISTRY }}
 
 jobs:
   build:
