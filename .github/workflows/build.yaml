@@ -24,7 +24,11 @@ env:
 jobs:
   build:
     runs-on: ubuntu-latest
+
     steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
       - name: Configure AWS Credentials
         uses: aws-actions/configure-aws-credentials@v4
         with:
@@ -53,7 +57,7 @@ jobs:
         uses: docker/build-push-action@v6
         with:
           context: .
-          file: .
+          file: Dockerfile
           push: true
           tags: ${{ env.REGISTRY }}/frontend:${{ github.sha }}
           provenance: false
