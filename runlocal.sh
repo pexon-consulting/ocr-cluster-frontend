@@ -1,0 +1,5 @@
+#!/bin/zsh
+npm run build
+docker build -t localfrontend -f Dockerfile .
+docker run -p3000:80 -e ENV_JS_SIGNED_URL_ENDPOINT=https://52vfjivwwa3xb6apfxe5wbuqym0zpjbt.lambda-url.eu-west-1.on.aws -e ENV_JS_STATUS_URL_ENDPOINT=https://kftifzqczpttnv3pd5shek3nom0xgmjo.lambda-url.eu-west-1.on.aws -e ENV_JS_DOWNLOAD_URL_ENDPOINT=https://73gvn5hcgotnlhmnn23ioucrxu0rhyiz.lambda-url.eu-west-1.on.aws -e STAGE=DEV -e ENV_JS_AZURE_CLIENT_ID=e3db6cdf-1620-4fd3-af08-5755bcf15d7a -e ENV_JS_AZURE_TENANT_ID=6415e608-80d3-44d9-8ff9-5c931feac194 -e ENV_JS_AZURE_REDIRECT_URL=http://localhost:3000 -e ENV_JS_AZURE_AUTHORITY_URL=https://login.microsoftonline.com/ localfrontend
+#docker run -p3000:8080 -e ENV_JS_SIGNED_URL_ENDPOINT=http://localhost:8080 -e ENV_JS_STATUS_URL_ENDPOINT=http://localhost:8080 -e ENV_JS_DOWNLOAD_URL_ENDPOINT=http://localhost:8080 -e STAGE=DEV -e ENV_JS_AZURE_CLIENT_ID=e3db6cdf-1620-4fd3-af08-5755bcf15d7a -e ENV_JS_AZURE_TENANT_ID=6415e608-80d3-44d9-8ff9-5c931feac194 -e ENV_JS_AZURE_REDIRECT_URL=http://localhost:3000 -e ENV_JS_AZURE_AUTHORITY_URL=https://login.microsoftonline.com/ localfrontend

@@ -1,0 +1,10 @@
+{
+  "stage": "STAGE_HOLDER",
+  "defaultDebug": "true",
+  "defaultToken": "eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCIsImtpZCI6Ik1vY2tBcGlnZWVTYW5kYm94VGVzdCJ9.eyJpc3MiOiJNb2NrQXBpZ2VlU2FuZGJveFRlc3QiLCJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkFwcEZpb25hIiwiaWF0IjoxNjI0NzE2MjY1LjU3OCwiYXVkIjoidXJuOmRlOnNhbnRhbmRlcjpzbWFydC1vY3I6aW5pdGlhdGUgIHVybjpkZTpzYW50YW5kZXI6c21hcnQtb2NyOnJlYWQgIHVybjpkZTpzYW50YW5kZXI6c21hcnQtb2NyOmZlZWRiYWNrIiwibmJmIjoxNjY2NjA1MjY4LjU3OCwiZXhwIjoxNjk4MTQxMjQ2LjU3OH0.AVfRXQkx56Cm7xdBSnI0VySN78Zs_9cTCGnyHVv2Eg8tDgzlmI_g-LkpJpyacibF7Kcs8ushij0qrE_sjJYSiZNVoXT2Ag4zu0HHONH9IhxnbX9QQDFj79AUb3G_vxVXpqJ0iRfOlR4abg-S3b4rL7LowUlnLBxkw4FXcTWvHRZPQf3RKZ9fjEiGmfXmyhoPCNsFWP03gRBcwk5a-L3koW9ZruxWTdpPRRduFWcJ8kwuvG3ELX9W6BSR1QE3aUAJVfhg-Q7nPZEV80BhFi7Y9KmtMQC8iAvZfAmPsZvu3i_Ri1bJWvv0Vf9iTtPrTt3HVlAkWJakc_MBsRhJOAWcEQ",
+  "defaultDeviceId": "acdff9e4-610d-11ed-9b6a-0242ac120002",
+  "defaultFeatures": "",
+  "defaultRequester": "Demo",
+  "defaultExchange": "",
+  "documentType": ""
+}

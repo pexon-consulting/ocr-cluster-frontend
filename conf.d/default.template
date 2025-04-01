@@ -1,0 +1,94 @@
+# Log format
+log_format upstreamlog '[$time_local] $remote_addr - $remote_user - $server_name to: $proxy_host: $request upstream_response_time $upstream_response_time msec $msec request_time $request_time';
+
+server {
+    listen 8080;
+    server_name localhost;
+
+    # GZIP configuration: static pages ignore BREACH vulnerability
+    # https://confluence.ci.gsnet.corp/pages/viewpage.action?pageId=122361211
+    gzip on;
+    gzip_min_length 1000;
+    gzip_buffers 4 32k;
+    gzip_proxied any;
+    gzip_types text/plain application/javascript application/x-javascript text/javascript text/css;
+    gzip_vary on;
+    gzip_disable "MSIE [1-6]\.(?!.*SV1)";
+
+    # Enables or disables specifying the port in absolute redirects issued by nginx.
+    port_in_redirect off;
+
+    # Log configuration
+    access_log /dev/stdout upstreamlog;
+    error_log /dev/stdout info;
+
+    # Don't cache it
+    proxy_no_cache 1;
+    # Even if cached, don't try to use it
+    proxy_cache_bypass 1;
+
+    expires off;
+
+    # No cache Header
+    add_header 'Cache-Control' 'no-store, no-cache, must-revalidate, proxy-revalidate, max-age=0' always;
+
+    # HTTP security headers
+    # https://confluence.ci.gsnet.corp/display/DIGITALUNI/Ethical+Hacking+in+Web+Applications
+    # Protect websites against protocol downgrade attacks and cookie hijacking.
+    add_header Strict-Transport-Security "max-age=31536000; includeSubDomains" always;
+    # Protect from Clickjacking
+    add_header x-frame-options "DENY" always;
+    # Protect against all sniffing-related vulnerabilities
+    add_header X-Content-Type-Options "nosniff" always;
+    # Preventing Cross-Site Scripting Attacks
+    add_header X-Xss-Protection "1; mode=block" always;
+
+    # don't send the nginx version number in error pages and Server header
+    server_tokens off;
+
+    # HOTFIX: SGM-19-BBMPO-29-CO-21519022
+    # HOTFIX: SGM-19-BBMPO-29-CO-21519031
+    # Most of the time, you need just GET, HEAD & POST HTTP request in your web application.
+    # Allowing TRACE or DELETE is risky as it can allow Cross-Site Tracking attack and potentially allow a hacker to steal the cookie information.
+    if ($request_method !~ ^(GET|HEAD|POST)$ ) {
+        # show 405 Not Allowed if someone is trying to use TRACE, DELETE, PUT, OPTIONS
+        return 405;
+    }
+
+    error_page 400 401 403 404 /40x.html;
+    location = /40x.html {
+        root /etc/nginx;
+    }
+
+    error_page 500 502 503 504 /50x.html;
+    location = /50x.html {
+        root /etc/nginx;
+    }
+
+    location / {
+        root ${APP_HOME};
+        index index.html;
+        # HOTFIX
+        # https://www.peterbe.com/plog/be-very-careful-with-your-add_header-in-nginx
+        #
+        # No cache Header
+        add_header 'Cache-Control' 'no-store, no-cache, must-revalidate, proxy-revalidate, max-age=0';
+        # Protect from Clickjacking
+        add_header X-Frame-Options DENY always;
+        # Preventing Cross-Site Scripting Attacks
+        add_header X-XSS-Protection "1; mode=block" always;
+        # Protect against all sniffing-related vulnerabilities
+        add_header X-Content-Type-Options nosniff always;
+        add_header Strict-Transport-Security "max-age=31536000; includeSubDomains";
+        try_files $uri $uri/ /index.html;
+    }
+
+    location /nginx_status {
+        stub_status on;
+        access_log off;
+        allow 127.0.0.1;
+        allow 10.1.0.0/16;
+        allow 10.0.0.0/13;
+        deny all;
+    }
+}
