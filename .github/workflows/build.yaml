@@ -8,8 +8,8 @@ on:
 
 permissions:
   id-token: write
-  contents: read
-  packages: read
+  contents: write
+  packages: write
   pull-requests: write
 
 env:
@@ -61,3 +61,6 @@ jobs:
           push: true
           tags: ${{ env.REGISTRY }}/frontend:${{ github.sha }}
           provenance: false
+          build-args: |
+            DOCKER_BUILDKIT=1
+            BUILDKIT_PROGRESS=plain
