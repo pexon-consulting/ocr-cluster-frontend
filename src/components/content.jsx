@@ -21,13 +21,12 @@ import {useDropzone} from "react-dropzone";
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
 import properties from '.././config/properties.json';
 import {useMsal} from "@azure/msal-react";
-import {loginRequest} from "../authConfig";
 import Papa from "papaparse"
 import NewWindow from 'react-new-window'
 import IWindowFeatures from 'react-new-window'
 // import {Popup} from "./popup";
 import Popup from 'reactjs-popup';
-import ReactDropdown from "react-dropdown";
+import {AwsClient} from "aws4fetch";
 
 const version = "2024-03-27 - 0.51.0"
 
@@ -54,6 +53,10 @@ function Content() {
     const [documentId, setDocumentId] = useState('');
     const [downloadUrl, setDownloadUrl] = useState('');
     const [debugSelected, setDebugSelected] = useState(properties.defaultDebug === "true");
+    const [accessKeyId, setAccessKeyId] = useState()
+    const updatedAccessKeyId = useRef(accessKeyId)
+    const [secretAccessKey, setSecretAccessKey] = useState()
+    const updatedSecretAccessKey = useRef(secretAccessKey)
     const [extended, setExtended] = useState('MAX');
     const updatedDeviceId = useRef(deviceId);
     const updatedFeatures = useRef(features);
@@ -77,8 +80,7 @@ function Content() {
     const height = window.screen.height * 0.7
 
     const windowFeatures: IWindowFeatures = {
-        height: height,
-        width: width
+        height: height, width: width
     }
 
     const {instance, accounts, inProgress} = useMsal();
@@ -89,12 +91,34 @@ function Content() {
 
     function logout() {
         console.log("logging out...")
-        if (window.STAGE === "MAIN" || window.STAGE === "DEMO") {
+        if (window.STAGE === "MAIN" || window.STAGE === "ocr") {
             return
         }
         window.localStorage.clear();
         console.log("storage cleared")
         window.location.reload()
+    }
+
+    async function sendRequestToLambda(method, url, data, headers) {
+        console.log("sending request to lambda:")
+        const aws = new AwsClient({
+            accessKeyId: updatedAccessKeyId.current, secretAccessKey: updatedSecretAccessKey.current
+        })
+
+        console.log("url: " + url)
+        console.log("method: " + method)
+        console.log("data: " + data)
+        console.log("headers: " + headers)
+        console.log("accessKeyId: " + updatedAccessKeyId.current)
+        console.log("secretAccessKey: " + updatedSecretAccessKey.current)
+
+        const response = await aws.fetch(url, {
+            method: method, headers: {
+                "Content-Type": "application/json",
+                "tenant-id": updatedTenant.current.length === 0 ? "ocr" : updatedTenant.current, ...headers
+            }, ...(method !== "GET" && {body: JSON.stringify(data)})
+        })
+        return response.json()
     }
 
     // async function RequestAccessToken() {
@@ -159,24 +183,41 @@ function Content() {
     }, []);
 
     const {getRootProps, getInputProps, isDragAccept} = useDropzone({
-        onDrop,
-        // maxFiles: 1
+        onDrop, // maxFiles: 1
     });
+
+    const handleAccessKeyId = event => {
+        console.log(event.target.value)
+        setAccessKeyId(() => {
+            console.log("updating access key id: " + event.target.value)
+            updatedAccessKeyId.current = event.target.value;
+            return event.target.value
+        })
+    }
+
+    const handleSecretAccessKey = event => {
+        console.log(event.target.value)
+        setSecretAccessKey(() => {
+            console.log("updating secret access key: " + event.target.value)
+            updatedSecretAccessKey.current = event.target.value;
+            return event.target.value
+        })
+    }
 
     const handleDocumentType = event => {
         console.log("doc type:")
         console.log(event)
-        console.log(event.value)
+        console.log(event.target.value)
         setDocumentType(() => {
-            updatedDocumentType.current = event.value;
-            return event.value;
+            updatedDocumentType.current = event.target.value;
+            return event.target.value;
         });
     }
 
     const handleTenant = event => {
         setTenant(() => {
-            updatedTenant.current = event.target.value;
-            return event.target.value;
+            updatedTenant.current = event.target.target.value;
+            return event.target.target.value;
         });
     }
 
@@ -225,49 +266,6 @@ function Content() {
         await onFileDownload(processId, documentId)
     }
 
-    function getS3Url(): String {
-        return "https://eop-report-main.s3.eu-west-1.amazonaws.com/result.csv?response-content-disposition=inline&X-Amz-Security-Token=IQoJb3JpZ2luX2VjEGcaDGV1LWNlbnRyYWwtMSJHMEUCIQDpgp3K0KgtxiZ9ZPWu%2FxiUbp6qXjqW2efKeKpZy8x6CgIgdRo%2BAlu33mF7pqa2Y%2Bw6g0N2VVhfBWs7Z8PZ%2FYWY3zMqhQMIQBAAGgw5OTQzMTg5OTEyNjYiDCTxnI2fEnAt5mtyPyriAli7%2Bmo0l2DMBITEhgWf3H9PjNX4ELeX8ZReRlyKP7%2BF%2FW22YhPCmGSJklfHtkOwU4c6RroWwAccwaMkwQ7K3%2BXrXDkmppZLufWzGByjXPTn9MxLZRzIzFWYE0A2SiSgQpUN5ZAQVEtImN7lpGwKg%2BZR1Eib1wc%2BJ0LGxTz7%2F55NOXa7zenpxrFnybMr7PmlZjvtW1Cl7VYqJOvYstjNInMFQTZXFgZioBbnaaK3J%2FZ4tqwhII8taIjAj4%2BilqekbRygy1TvR1rZTaX%2BQv3bVtnoEAn7XnrYDz8OureHfljDT7WjChmqMw%2BmhjqDqZ1hFkcD6VM%2BM292MgxGMC0cttg3sdg%2BlK58Y%2F1DXHoooSeBxCjW92UjgxSbh9qi4MO3DbSct7X6e8ZZxsHeHxxx1XKJhY4lqVUjLGEvawZh18OMvBTBBHgQjlwnh3uod7EakfABUWzgstShMzy%2BZJ4cf%2BCipDC%2FkoqhBjqzAhe6beTPJ%2FWFn9AONSLorjUAwZNVRlFxdU7MMiIRZ%2FyNA%2FsmL9AUV%2FqjKVj9hK9kszDXQ6JJee3VZqApeoKEZkY7ZBpJWsffLy6IrB02OJ6zkaxVc%2FNJmv8EXTyVevUmTioAyhr2qpTpEp7BpbfJtvcG%2B0ilXNzU5KHQigq%2BTSQlvsdIl%2Bw3zcDHndusgyVmjohWXtSjTaGNbAi9%2FcGKKrfhjiwj9wi6tOBF61rtfLQb27Z80ZuPn2D6g2MpOkx9cXW9u1jBBxFs%2B81liLwsC7mdJfnWbxX5UDHZAERRzZEwWEKEEZnqfMblE43Jg1DerQ%2FemcXt6hECC5fuBQLwr3O58f8eyp%2F6KnbjIEVqZkPcP2G2QNfovmdEaN%2FxHWw0llhGkBzZNUEF82fv%2FmOuHftoRlk%3D&X-Amz-Algorithm=AWS4-HMAC-SHA256&X-Amz-Date=20230328T063014Z&X-Amz-SignedHeaders=host&X-Amz-Expires=43200&X-Amz-Credential=ASIA6PAQHX6RC4ZMJKJI%2F20230328%2Feu-west-1%2Fs3%2Faws4_request&X-Amz-Signature=0d6bce14593bd6cf845dd5ee08f1174de3ec7d6a94b1fdd66fb5633d3355a7e3"
-    }
-
-    async function openCSV() {
-
-        console.log("width: " + width)
-        console.log("height: " + height)
-        let response = await fetch(getS3Url())
-        let data = await response.blob()
-        let metadata = {
-            type: 'text/csv'
-        }
-        let file = new File([data], "report.csv", metadata)
-
-        Papa.parse(file, {
-            header: true,
-            skipEmptyLines: false,
-            complete: function (results) {
-                console.log(results.data)
-                const rowsArray = [];
-                const valuesArray = [];
-
-                // Iterating data to get column name and their values
-                results.data.map((d) => {
-                    // console.log(d)
-                    rowsArray.push(Object.keys(d));
-                    valuesArray.push(Object.values(d));
-                });
-
-                // Parsed Data Response in array format
-                setParsedData(results.data);
-
-                // Filtered Column Names
-                setTableRows(rowsArray[0]);
-
-                // Filtered Values
-                setValues(valuesArray);
-            },
-        })
-        setOpenCsv(true)
-    }
-
     const delay = ms => new Promise(res => setTimeout(res, ms));
 
     async function onFileDownload(processId, documentId) {
@@ -280,57 +278,79 @@ function Content() {
         let url;
         if (documentId) {
             console.log("Using documentId")
-            url = window.BACKEND + "/ocr_process/" + processId + "/ocr_documents/" + documentId + "/download";
+            url = "https://aczntrm5puua7xucuaczely4ti0hixgo.lambda-url.eu-central-1.on.aws/ocr_process/" + processId + "/ocr_documents/" + documentId + "/download";
         } else {
             console.log("Not using documentId")
-            url = window.BACKEND + "/ocr_process/" + processId + "/download";
+            url = "https://aczntrm5puua7xucuaczely4ti0hixgo.lambda-url.eu-central-1.on.aws/ocr_process/" + processId + "/download";
         }
         console.log("URL: " + url)
         setIsLoading(true)
-        await axios({
-            method: "GET",
-            url: url,
-            validateStatus: () => true,
-            headers: {
-                "Authorization": "Bearer " + token,
-                "accept": "application/json",
-                "content-type": "application/json",
-                "tenant-id": updatedTenant.current.length === 0 ? "DEMO" : updatedTenant.current
-            }
-        }).then(response => {
-            console.log(response);
-            if (response.status !== 200) {
-                setErr(response.data.moreInformation)
-                setIsLoading(false)
-            } else {
-                console.log(response.data)
-                console.log("download url: " + response.data.downloadUrl)
-                setDownloadUrl(response.data.downloadUrl);
-                console.log("downloading file...")
 
-                axios({
-                    method: "GET",
-                    url: response.data.downloadUrl,
-                    responseType: 'blob'
-                }).then((downloadResponse) => {
-                    console.log("file ending: " + downloadResponse.headers["content-type"].split("/")[1])
-                    let filename = documentId === null || documentId === "" ? processId : processId + "_" + documentId;
-                    const href = URL.createObjectURL(downloadResponse.data)
-                    const link = document.createElement('a')
-                    link.href = href
-                    link.setAttribute('download', filename + "." + downloadResponse.headers["content-type"].split("/")[1])
-                    document.body.appendChild(link)
-                    link.click()
-                    document.body.removeChild(link)
-                    URL.revokeObjectURL(href)
-                })
-                setIsLoading(false)
-            }
-        }).catch(err => {
+        try {
+            let response = await sendRequestToLambda("GET", url);
+            console.log("Response: " + response);
+            console.log("download url: " + response.downloadUrl)
+            setDownloadUrl(response.downloadUrl);
+            console.log("downloading file...")
+            axios({
+                method: "GET", url: response.data.downloadUrl, responseType: 'blob'
+            }).then((downloadResponse) => {
+                console.log("file ending: " + downloadResponse.headers["content-type"].split("/")[1])
+                let filename = documentId === null || documentId === "" ? processId : processId + "_" + documentId;
+                const href = URL.createObjectURL(downloadResponse.data)
+                const link = document.createElement('a')
+                link.href = href
+                link.setAttribute('download', filename + "." + downloadResponse.headers["content-type"].split("/")[1])
+                document.body.appendChild(link)
+                link.click()
+                document.body.removeChild(link)
+                URL.revokeObjectURL(href)
+            })
+            setIsLoading(false)
+        } catch (exception) {
             console.log(err);
             setErr(err.message)
             setIsLoading(false)
-        })
+        }
+        // await axios({
+        //     method: "GET", url: url, validateStatus: () => true, headers: {
+        //         "Authorization": "Bearer " + token,
+        //         "accept": "application/json",
+        //         "content-type": "application/json",
+        //         "tenant-id": updatedTenant.current.length === 0 ? "ocr" : updatedTenant.current
+        //     }
+        // }).then(response => {
+        //     console.log(response);
+        //     if (response.status !== 200) {
+        //         setErr(response.data.moreInformation)
+        //         setIsLoading(false)
+        //     } else {
+        //         console.log(response.data)
+        //         console.log("download url: " + response.data.downloadUrl)
+        //         setDownloadUrl(response.data.downloadUrl);
+        //         console.log("downloading file...")
+        //
+        //         axios({
+        //             method: "GET", url: response.data.downloadUrl, responseType: 'blob'
+        //         }).then((downloadResponse) => {
+        //             console.log("file ending: " + downloadResponse.headers["content-type"].split("/")[1])
+        //             let filename = documentId === null || documentId === "" ? processId : processId + "_" + documentId;
+        //             const href = URL.createObjectURL(downloadResponse.data)
+        //             const link = document.createElement('a')
+        //             link.href = href
+        //             link.setAttribute('download', filename + "." + downloadResponse.headers["content-type"].split("/")[1])
+        //             document.body.appendChild(link)
+        //             link.click()
+        //             document.body.removeChild(link)
+        //             URL.revokeObjectURL(href)
+        //         })
+        //         setIsLoading(false)
+        //     }
+        // }).catch(err => {
+        //     console.log(err);
+        //     setErr(err.message)
+        //     setIsLoading(false)
+        // })
     }
 
     async function onCallSearch(processId, documentId, times) {
@@ -357,69 +377,75 @@ function Content() {
         let url;
         if (documentId) {
             console.log("Using documentId")
-            url = window.BACKEND + "/ocr_process/" + processId + "/ocr_documents/" + documentId + "?extended=" + updatedExtended.current;
+            url = "https://3xujjmxprzwdp5m4dyjpbdmnle0jhqhg.lambda-url.eu-central-1.on.aws/ocr_process/" + processId + "/ocr_documents/" + documentId + "?extended=" + updatedExtended.current;
         } else {
             console.log("Not using documentId")
-            url = window.BACKEND + "/ocr_process/" + processId + "?extended=" + updatedExtended.current;
+            url = "https://3xujjmxprzwdp5m4dyjpbdmnle0jhqhg.lambda-url.eu-central-1.on.aws/ocr_process/" + processId + "?extended=" + updatedExtended.current;
         }
         // await RequestAccessToken()
         console.log("URL: " + url)
-        await axios({
-            method: "GET",
-            url: url,
-            validateStatus: () => true,
-            headers: {
-                "Authorization": "Bearer " + token,
-                "accept": "application/json",
-                "content-type": "application/json",
-                "verbose-option": debugSelected ? "DEBUG" : "NOT_DEBUG",
-                "tenant-id": updatedTenant.current.length === 0 ? "Demo" : updatedTenant.current
-            }
-        }).then(response => {
-            console.log(response)
+
+        let headers = {
+            "verbose-option": debugSelected ? "DEBUG" : "NOT_DEBUG",
+        }
+
+        let response = await sendRequestToLambda("GET", url, {}, headers)
+
+        // await axios({
+        //     method: "GET", url: url, validateStatus: () => true, headers: {
+        //         "Authorization": "Bearer " + token,
+        //         "accept": "application/json",
+        //         "content-type": "application/json",
+        //         "verbose-option": debugSelected ? "DEBUG" : "NOT_DEBUG",
+        //         "tenant-id": updatedTenant.current.length === 0 ? "ocr" : updatedTenant.current
+        //     }
+        // }).then(response => {
+        //     console.log(response)
+        //     setProcessData(response);
+        //     setIsOneDocumentRetreive(false)
+        //     if (response.status === 400 || response.status === 401 || response.status === 500) {
+        //         setErr(response.data.moreInformation)
+        //         setIsFetched(false)
+        //         setIsSearching(false);
+        //         return;
+        //     }
+        if (response && response.documentStatus && (response.documentStatus === "COMPLETED" || response.documentStatus === "COMPLETED_WITH_ERROR" || response.documentStatus === "DEFERRED")) {
+            console.log("found document")
+            setIsOneDocumentRetreive(true)
+            setIsFetched(true);
+            setIsSearching(false);
+            return;
+        }
+        if (!(response && response.processStatus && (response.processStatus === "COMPLETED" || response.processStatus === "COMPLETED_WITH_ERROR" || response.processStatus === "DEFERRED"))) {
+            console.log("process not yet finished, searching again")
+            setIsFetched(false)
+            setIsSearching(true);
+            onCallSearch(processId, documentId, times ? times + 1 : 1)
+        } else {
+            console.log("process finished")
+            setIsFetched(true)
+            setIsSearching(false);
             setProcessData(response);
             setIsOneDocumentRetreive(false)
-            if (response.status === 400 || response.status === 401 || response.status === 500) {
-                setErr(response.data.moreInformation)
-                setIsFetched(false)
-                setIsSearching(false);
-                return;
-            }
-            if (response && response.data.documentStatus && (response.data.documentStatus === "COMPLETED" || response.data.documentStatus === "COMPLETED_WITH_ERROR" || response.data.documentStatus === "DEFERRED")) {
-                console.log("found document")
-                setIsOneDocumentRetreive(true)
-                setIsFetched(true);
-                setIsSearching(false);
-                return;
-            }
-            if (!(response && response.data && response.data.processStatus && (response.data.processStatus === "COMPLETED" || response.data.processStatus === "COMPLETED_WITH_ERROR" || response.data.processStatus === "DEFERRED"))) {
-                console.log("process not yet finished, searching again")
-                setIsFetched(false)
-                setIsSearching(true);
-                onCallSearch(processId, documentId, times ? times + 1 : 1)
+            if (response.debugInfo && Object.keys(response.debugInfo).length > 0) {
+                console.log(response.debugInfo)
+                setVersionData(response.debugInfo)
+                setVersionPresent(true)
             } else {
-                console.log("process finished")
-                setIsFetched(true)
-                setIsSearching(false);
-                if (response.data.debugInfo && Object.keys(response.data.debugInfo).length > 0) {
-                    console.log(response.data.debugInfo)
-                    setVersionData(response.data.debugInfo)
-                    setVersionPresent(true)
-                } else {
-                    console.log("debugInfo is missing")
-                }
-                console.log("version data: ")
-                console.log(versionData)
+                console.log("debugInfo is missing")
             }
-        }).catch(err => {
-            console.log(err);
-            console.log("err: " + err)
-            console.log("err: " + err.response)
-            console.log("err: " + err.message)
-            setErr(err.message)
-            setIsFetched(false)
-            setIsSearching(false);
-        })
+            console.log("version data: ")
+            console.log(versionData)
+        }
+        // }).catch(err => {
+        //     console.log(err);
+        //     console.log("err: " + err)
+        //     console.log("err: " + err.response)
+        //     console.log("err: " + err.message)
+        //     setErr(err.message)
+        //     setIsFetched(false)
+        //     setIsSearching(false);
+        // })
     }
 
     const onClear = () => {
@@ -444,15 +470,16 @@ function Content() {
             console.log(r)
             setIsUploading(true)
             console.log("fetching done")
-            console.log("Uploading file to " + r.replace(/^\s+|\s+$/g, ''))
-            const config = {
-                headers: {
-                    'content-type': testFile.type,
-                    'Authorization': token,
-                    "tenant-id": updatedTenant.current.length === 0 ? "Demo" : updatedTenant.current
-                }
-            }
-            axios.put(r.replace(/^\s+|\s+$/g), testFile, config).then(() => {
+            console.log("Uploading file to " + r)
+            // const config = {
+            //     headers: {
+            //         'content-type': testFile.type,
+            //         'Authorization': token,
+            //         "tenant-id": updatedTenant.current.length === 0 ? "ocr" : updatedTenant.current
+            //     }
+            // }
+            // axios.put(r.replace(/^\s+|\s+$/g), testFile).then(() => {
+            axios.put(r, testFile).then(() => {
                 console.log('success')
                 setIsUploaded(true)
                 setIsUploading(false)
@@ -482,44 +509,31 @@ function Content() {
         setIsFetched(false);
         setProcessId(null)
         // await RequestAccessToken()
-        console.log("token in function: " + token)
-        let url = window.BACKEND + "/ocr_process"
+        let url = "https://z5lvulli5tvwdpmem5j2u7vlaa0hkryt.lambda-url.eu-central-1.on.aws/"
         console.log("url: " + url)
         try {
-            let rawData = await axios({
-                    method: "POST",
-                    url: url,
-                    validateStatus: () => true,
-                    data: {
-                        "additionalInfo": {
-                            "deviceId": updatedDeviceId.current,
-                            "requesterApplication": updatedRequester.current,
-                        },
-                        "debugInfo": {
-                            "features": updatedFeatures.current,
-                        },
-                        "documentType": updatedDocumentType.current
-                    },
-                    headers: {
-                        "content-type": "application/json",
-                        "authorization": token,
-                        "accept": "application/json",
-                        "tenant-id": updatedTenant.current.length === 0 ? "Demo" : updatedTenant.current
-                    }
-                }
-            );
-            console.log(rawData)
-            if (rawData.status === 400 || rawData.status === 401 || rawData.status === 500) {
-                setErr(rawData.data.moreInformation)
-                setIsLoading(false)
-                return undefined;
-            } else {
-                console.log("url: ", rawData.data.uploadUrl)
-                setProcessId(rawData.data.ocrProcessId)
-                console.log(processId)
-                setIsLoading(false);
-                return rawData.data.uploadUrl;
-            }
+            let response = await sendRequestToLambda("POST", url, {
+                // "additionalInfo": {
+                //     "deviceId": updatedDeviceId.current,
+                //     "requesterApplication": updatedRequester.current,
+                // },
+                "debugInfo": {
+                    "features": updatedFeatures.current,
+                }, "documentType": updatedDocumentType.current
+            })
+            console.log("signed url response:")
+            console.log(response.uploadUrl)
+            // if (response.status === 400 || response.status === 401 || response.status === 500) {
+            //     setErr(response.data.moreInformation)
+            //     setIsLoading(false)
+            //     return undefined;
+            // } else {
+            console.log("url: ", response.uploadUrl)
+            setProcessId(response.ocrProcessId)
+            console.log(processId)
+            setIsLoading(false);
+            return response.uploadUrl;
+            // }
         } catch (err) {
             console.log(err)
             setErr(err.message);
@@ -533,221 +547,184 @@ function Content() {
         // RequestAccessToken()
     })
 
-    const documentTypes = [
-        {value: '', label: 'Undefined'},
-        {
-            type: 'group', name: 'ID Cards', items: [
-                {value: 'CARD_ID:DE_CARD_ID', label: 'German ID Card'},
-                {value: 'CARD_ID:OTHER', label: 'Other ID Card'},
-            ]
-        },
-        {
-            type: 'group', name: 'Passports', items: [
-                {value: 'PASSPORT:GER_PASSPORT', label: 'German Passport'},
-                {value: 'PASSPORT:TUR_PASSPORT', label: 'Turkish Passport - not implemented'},
-                {value: 'PASSPORT:CHN_PASSPORT', label: 'Chinese Passport - not implemented'},
-                {value: 'PASSPORT:ROM_PASSPORT', label: 'Romanian Passport - not implemented'},
-            ]
-        },
-        {
-            type: 'group', name: 'Bankcards', items: [
-                {value: 'BANKCARD', label: 'Bankcard'},
-            ]
-        },
-        {
-            type: 'group', name: 'Pension Statements', items: [
-                {value: 'PENSION_STATEMENT', label: 'Pension Statement'},
-            ]
-        },
-    ]
+    const documentTypes = [{value: '', label: 'Undefined'}, {
+        type: 'group', name: 'ID Cards', items: [{value: 'CARD_ID:DE_CARD_ID', label: 'German ID Card'}, {
+            value: 'CARD_ID:OTHER', label: 'Other ID Card'
+        },]
+    }, {
+        type: 'group', name: 'Passports', items: [{value: 'PASSPORT:GER_PASSPORT', label: 'German Passport'}, {
+            value: 'PASSPORT:TUR_PASSPORT', label: 'Turkish Passport - not implemented'
+        }, {
+            value: 'PASSPORT:CHN_PASSPORT', label: 'Chinese Passport - not implemented'
+        }, {value: 'PASSPORT:ROM_PASSPORT', label: 'Romanian Passport - not implemented'},]
+    }, {
+        type: 'group', name: 'Bankcards', items: [{value: 'BANKCARD', label: 'Bankcard'},]
+    }, {
+        type: 'group', name: 'Pension Statements', items: [{value: 'PENSION_STATEMENT', label: 'Pension Statement'},]
+    },]
 
-    return (
-        <Stack spacing={2} alignItems="center">
+    return (<Stack spacing={2} alignItems="center">
 
-            <Popup
-                trigger={<Button type="submit">System Info</Button>}>
-                {() => (
+        <Popup
+            trigger={<Button type="submit">System Info</Button>}>
+            {() => (<div>
+                {versionPresent ? (<div>
                     <div>
-                        {versionPresent ? (
-                            <div>
-                                <div>
-                                    <h3>System Info</h3>
-                                    <p><b>Frontend Version:</b> {version}</p>
-                                    <p><b>Signed URL Function:</b> {versionData.signedurlversion}</p>
-                                    <p><b>Preprocessing Function:</b> {versionData.preprocessingVersion}</p>
-                                    <p><b>Processing Function:</b> {versionData.processingVersion}</p>
-                                    <p><b>Status Function:</b> {versionData.statusVersion}</p>
-                                </div>
-                            </div>) : (
-                            <div>
-                                <div>
-                                    <h3>System Info</h3>
-                                    <p><b>Frontend Version:</b> {version}</p>
-                                    <p><b>Signed URL Function:</b> {"call the service first"}</p>
-                                    <p><b>Preprocessing Function:</b> {"call the service first"}</p>
-                                    <p><b>Processing Function:</b> {"call the service first"}</p>
-                                    <p><b>Status Function:</b> {"call the service first"}</p>
-                                </div>
-                            </div>
-                        )}
+                        <h3>System Info</h3>
+                        <p><b>Frontend Version:</b> {version}</p>
+                        <p><b>Signed URL Function:</b> {versionData.signedurlversion}</p>
+                        <p><b>Preprocessing Function:</b> {versionData.preprocessingVersion}</p>
+                        <p><b>Processing Function:</b> {versionData.processingVersion}</p>
+                        <p><b>Status Function:</b> {versionData.statusVersion}</p>
                     </div>
-                )}
-            </Popup>
+                </div>) : (<div>
+                    <div>
+                        <h3>System Info</h3>
+                        <p><b>Frontend Version:</b> {version}</p>
+                        <p><b>Signed URL Function:</b> {"call the service first"}</p>
+                        <p><b>Preprocessing Function:</b> {"call the service first"}</p>
+                        <p><b>Processing Function:</b> {"call the service first"}</p>
+                        <p><b>Status Function:</b> {"call the service first"}</p>
+                    </div>
+                </div>)}
+            </div>)}
+        </Popup>
 
-            <CardContainer>
-                <Card>
-                    <CardContent>
-                        <BannerContainer>
-                            <BannerImage
-                                src="https://pexon-consulting.de/wp-content/uploads/2022/03/PexonConsulting-59-min.png"></BannerImage>
-                        </BannerContainer>
-                        <BannerContent>
-                            <Typography variant="h6">Pexon OCR Demo Application</Typography>
-                        </BannerContent>
+        <CardContainer>
+            <Card>
+                <CardContent>
+                    <BannerContainer>
+                        <BannerImage
+                            src="https://pexon-consulting.de/wp-content/uploads/2022/03/PexonConsulting-59-min.png"></BannerImage>
+                    </BannerContainer>
+                    <BannerContent>
+                        <Typography variant="h6">Pexon OCR Demo Application</Typography>
+                    </BannerContent>
 
-                        <Stack spacing={2}>
+                    <Stack spacing={2}>
 
-                            <Accordion>
-                                <AccordionSummary
-                                    expandIcon={<ExpandMoreIcon/>}
-                                    aria-controls="panel1a-content"
-                                    id="panel1a-header"
-                                >
-                                    <Typography>Technical Information</Typography>
+                        <Accordion>
+                            <AccordionSummary
+                                expandIcon={<ExpandMoreIcon/>}
+                                aria-controls="panel1a-content"
+                                id="panel1a-header"
+                            >
+                                <Typography>Technical Information</Typography>
 
-                                </AccordionSummary>
+                            </AccordionSummary>
 
-                                <AccordionDetails>
-                                    <Stack spacing={2}>
-                                        {/*<TextField id="deviceId" label="Device Identification"*/}
-                                        {/*           variant="standard"*/}
-                                        {/*           name="deviceId" value={deviceId} onChange={handleDeviceId}/>*/}
-                                        {/*<TextField id="extended" label="Get Debug Information" variant="standard"*/}
-                                        {/*           name="extended" value={extended} onChange={handleExtended}/>*/}
-                                        {/*<TextField id="requester" label="Requester Application"*/}
-                                        {/*           variant="standard"*/}
-                                        {/*           name="requester" value={requesterApplication}*/}
-                                        {/*           onChange={handleRequester}/>*/}
-                                        {/*<TextField id="documentType" label="Document Type" variant="standard"*/}
-                                        {/*           name="documentType" value={documentType}*/}
-                                        {/*           onChange={handleDocumentType}/>*/}
+                            <AccordionDetails>
+                                <Stack spacing={2}>
+                                    <TextField id="accessKeyId" label="Access Key Id"
+                                               variant="standard"
+                                               name="accessKeyId" value={accessKeyId} onChange={handleAccessKeyId}/>
+                                    <TextField id="secretAccessKey" label="Secret Access Key"
+                                               variant="standard"
+                                               name="secretAccessKey" value={secretAccessKey}
+                                               onChange={handleSecretAccessKey}/>
+                                    {/*<ReactDropdown options={documentTypes} value={documentType}*/}
+                                    {/*               placeholder="Select Document Type" onChange={handleDocumentType}>*/}
+                                    {/*</ReactDropdown>*/}
 
-                                        <ReactDropdown options={documentTypes} value={documentType}
-                                                       placeholder="Select Document Type" onChange={handleDocumentType}>
-                                        </ReactDropdown>
+                                    {/*<TextField id="tenant" label="Tenant-Id"*/}
+                                    {/*           variant="standard" name="tenant"*/}
+                                    {/*           value={tenant}*/}
+                                    {/*           onChange={handleTenant}/>*/}
+                                    {/*<TextField id="features" label="feature toggles"*/}
+                                    {/*           variant="standard"*/}
+                                    {/*           name="features" value={features} onChange={handleFeatures}/>*/}
+                                </Stack>
+                            </AccordionDetails>
+                        </Accordion>
+                        <br/>
+                        {err && <h2 style={{color: "red"}}>{err}</h2>}
 
-                                        {/*<TextField id="tenant" label="Tenant-Id"*/}
-                                        {/*           variant="standard" name="tenant"*/}
-                                        {/*           value={tenant}*/}
-                                        {/*           onChange={handleTenant}/>*/}
-                                        {/*<TextField id="features" label="feature toggles"*/}
-                                        {/*           variant="standard"*/}
-                                        {/*           name="features" value={features} onChange={handleFeatures}/>*/}
-                                    </Stack>
-                                </AccordionDetails>
-                            </Accordion>
-                            <br/>
-                            {err && <h2 style={{color: "red"}}>{err}</h2>}
+                        <br></br>
 
-                            <br></br>
+                        <UploadContainer {...getRootProps({
+                            accepted: +isDragAccept, disabled
+                        })}> <input type={"file"} max={1} {...getInputProps()} />
+                            {(isLoading || isUploading) && <CircularProgress/>}
+                            <p>Drop image here, or click to select files</p>
+                        </UploadContainer>
 
-                            <UploadContainer {...getRootProps({
-                                accepted: +isDragAccept,
-                                disabled
-                            })}> <input type={"file"} max={1} {...getInputProps()} />
-                                {(isLoading || isUploading) && <CircularProgress/>}
-                                <p>Drop image here, or click to select files</p>
-                            </UploadContainer>
+                        {isUploaded && <h3 style={{color: "green"}}>Successfully uploaded file</h3>}
 
-                            {isUploaded && <h3 style={{color: "green"}}>Successfully uploaded file</h3>}
+                        <br/>
 
-                            <br/>
-
-                            <Stack direction="row" spacing={2}>
-                                <TextField id="processId" label="Find process by process ID" variant="standard"
-                                           name="processId" value={processId} onChange={handleProcessId}
-                                           fullWidth/>
-                                <TextField id="documentId" label="Filter by document ID" variant="standard"
-                                           name="documentId" value={documentId} onChange={handleDocumentId}
-                                           fullWidth/>
-                                {isSearching && <CircularProgress style={{width: "40px"}}/>}
-                            </Stack>
+                        <Stack direction="row" spacing={2}>
+                            <TextField id="processId" label="Find process by process ID" variant="standard"
+                                       name="processId" value={processId} onChange={handleProcessId}
+                                       fullWidth/>
+                            <TextField id="documentId" label="Filter by document ID" variant="standard"
+                                       name="documentId" value={documentId} onChange={handleDocumentId}
+                                       fullWidth/>
+                            {isSearching && <CircularProgress style={{width: "40px"}}/>}
                         </Stack>
-                    </CardContent>
-                    <CardActions>
-                        <Button variant="text" onClick={() => {
-                            setDebugSelected(!debugSelected);
-                        }
-                        }> {debugSelected ? 'Debug On' : 'Debug Off'}
-                        </Button>
-                        <div onChange={onExtendedValue}>
-                            <input type={"radio"} value="MIN" name="extended"/> Min
-                            <input type={"radio"} value="MED" name="extended"/> Med
-                            <input type={"radio"} value="MAX" name="extended"/> Max
-                        </div>
-                        {/*<Button variant="text" onClick={() => {*/}
-                        {/*    setExtended(!extendedSelected);*/}
-                        {/*}*/}
-                        {/*}> {extendedSelected ? 'Extended On' : 'Extended Off'}*/}
-                        {/*</Button>*/}
-                        <Button type="submit" onClick={onSearch}>Search</Button>
-                        <Button variant="submit" onClick={onDownload}>Download</Button>
-                        {/*<Button type="submit" onClick={openCSV}>Open FSA Report</Button>*/}
-
-                    </CardActions>
-                </Card>
-            </CardContainer>
-            {
-                isOpenCsv &&
-                <NewWindow title={"FSA Report"} name={"FSA Report"} center={"screen"} copyStyles={true}
-                           features={windowFeatures}>
-                    <div>
-                        <table border="1px solid black">
-                            <thead>
-                            <tr>
-                                {tableRows.map((rows, index) => {
-                                    return <th key={index}>{rows}</th>;
-                                })}
-                            </tr>
-                            </thead>
-                            <tbody>
-                            {values.map((value, index) => {
-                                return (
-                                    <tr key={index}>
-                                        {value.map((val, i) => {
-                                            return <td key={i}>{val}</td>;
-                                        })}
-                                    </tr>
-                                );
-                            })}
-                            </tbody>
-                        </table>
-                        <Button type="submit" onClick={() => setOpenCsv(false)}>Close</Button>
+                    </Stack>
+                </CardContent>
+                <CardActions>
+                    <Button variant="text" onClick={() => {
+                        setDebugSelected(!debugSelected);
+                    }}> {debugSelected ? 'Debug On' : 'Debug Off'}
+                    </Button>
+                    <div onChange={onExtendedValue}>
+                        <input type={"radio"} value="MIN" name="extended"/> Min
+                        <input type={"radio"} value="MED" name="extended"/> Med
+                        <input type={"radio"} value="MAX" name="extended"/> Max
                     </div>
-                </NewWindow>
-            }
+                    {/*<Button variant="text" onClick={() => {*/}
+                    {/*    setExtended(!extendedSelected);*/}
+                    {/*}*/}
+                    {/*}> {extendedSelected ? 'Extended On' : 'Extended Off'}*/}
+                    {/*</Button>*/}
+                    <Button type="submit" onClick={onSearch}>Search</Button>
+                    <Button variant="submit" onClick={onDownload}>Download</Button>
+                    {/*<Button type="submit" onClick={openCSV}>Open FSA Report</Button>*/}
 
-            {
-                isFetched && <Stack style={{width: '90%'}}> <CardContainer><OCRResultTabs
-                    data={isOneDocumentRetreive ? {
-                        "processId": processId,
-                        "documents": [processData.data]
-                    } : processData.data} tenant={updatedTenant.current}></OCRResultTabs></CardContainer> </Stack>
-            }
+                </CardActions>
+            </Card>
+        </CardContainer>
+        {isOpenCsv && <NewWindow title={"FSA Report"} name={"FSA Report"} center={"screen"} copyStyles={true}
+                                 features={windowFeatures}>
+            <div>
+                <table border="1px solid black">
+                    <thead>
+                    <tr>
+                        {tableRows.map((rows, index) => {
+                            return <th key={index}>{rows}</th>;
+                        })}
+                    </tr>
+                    </thead>
+                    <tbody>
+                    {values.map((value, index) => {
+                        return (<tr key={index}>
+                            {value.map((val, i) => {
+                                return <td key={i}>{val}</td>;
+                            })}
+                        </tr>);
+                    })}
+                    </tbody>
+                </table>
+                <Button type="submit" onClick={() => setOpenCsv(false)}>Close</Button>
+            </div>
+        </NewWindow>}
 
-            <br/>
+        {isFetched && <Stack style={{width: '90%'}}> <CardContainer><OCRResultTabs
+            data={isOneDocumentRetreive ? {
+                "processId": processId, "documents": [processData]
+            } : processData} tenant={updatedTenant.current} authenticateLambda={sendRequestToLambda}>
 
-            {
-                isFetched &&
-                <Stack style={{width: '90%'}}>
-                    <Typography variant="body">Debug Information</Typography>
+        </OCRResultTabs></CardContainer> </Stack>}
 
-                    <JSONTree shouldExpandNode={() => false} data={processData.data}/>
-                </Stack>
-            }
-        </Stack>
-    )
-        ;
+        <br/>
+
+        {isFetched && <Stack style={{width: '90%'}}>
+            <Typography variant="body">Debug Information</Typography>
+
+            <JSONTree shouldExpandNode={() => false} data={processData}/>
+        </Stack>}
+    </Stack>);
 }
 
 export default Content;

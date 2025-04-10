@@ -38,7 +38,7 @@ import {useMsal} from "@azure/msal-react";
 import {Article} from "@mui/icons-material";
 
 function OCRResultTabs(props) {
-    let {data, tenant} = props;
+    let {data, tenant, authenticateLambda} = props;
 
     const {instance, accounts, inProgress} = useMsal();
 
@@ -54,53 +54,53 @@ function OCRResultTabs(props) {
         window.location.reload()
     }
 
-    async function RequestAccessToken() {
-        if (window.STAGE === "MAIN" || window.STAGE === "DEMO") {
-            token = properties.defaultToken
-            return
-        }
-        console.log("name logged in: " + accounts[0].name)
-        console.log("idToken logged in: " + accounts[0].idToken)
-
-        let tokenResponse = await instance.handleRedirectPromise();
-        //console.log("tokenResponse.accessToken: " + tokenResponse.accessToken)
-
-        let accountObject;
-        if (tokenResponse) {
-            accountObject = tokenResponse.account;
-        } else {
-            accountObject = instance.getAllAccounts()[0];
-        }
-        try {
-            if (accountObject && tokenResponse) {
-                console.log("got valid accountObject and tokenResponse")
-            } else if (accountObject) {
-                console.log("user logged in but no tokens")
-                try {
-                    tokenResponse = await instance.acquireTokenSilent({
-                        account: accountObject, scopes: loginRequest.scopes
-                    });
-                } catch (err) {
-                    await instance.acquireTokenRedirect(loginRequest)
-                }
-            } else {
-                console.log("no accountObject or tokenResponse")
-                await instance.loginRedirect(loginRequest)
-            }
-        } catch (err) {
-            console.error(err)
-        }
-        console.log(tokenResponse.accessToken)
-        console.log("token response:")
-        console.log(tokenResponse)
-        token = tokenResponse.idToken
-        if (token === undefined) {
-            console.log("redirecting to logout")
-            logout()
-        }
-
-        console.log("token set: " + token)
-    }
+    // async function RequestAccessToken() {
+    //     if (window.STAGE === "MAIN" || window.STAGE === "DEMO") {
+    //         token = properties.defaultToken
+    //         return
+    //     }
+    //     console.log("name logged in: " + accounts[0].name)
+    //     console.log("idToken logged in: " + accounts[0].idToken)
+    //
+    //     let tokenResponse = await instance.handleRedirectPromise();
+    //     //console.log("tokenResponse.accessToken: " + tokenResponse.accessToken)
+    //
+    //     let accountObject;
+    //     if (tokenResponse) {
+    //         accountObject = tokenResponse.account;
+    //     } else {
+    //         accountObject = instance.getAllAccounts()[0];
+    //     }
+    //     try {
+    //         if (accountObject && tokenResponse) {
+    //             console.log("got valid accountObject and tokenResponse")
+    //         } else if (accountObject) {
+    //             console.log("user logged in but no tokens")
+    //             try {
+    //                 tokenResponse = await instance.acquireTokenSilent({
+    //                     account: accountObject, scopes: loginRequest.scopes
+    //                 });
+    //             } catch (err) {
+    //                 await instance.acquireTokenRedirect(loginRequest)
+    //             }
+    //         } else {
+    //             console.log("no accountObject or tokenResponse")
+    //             await instance.loginRedirect(loginRequest)
+    //         }
+    //     } catch (err) {
+    //         console.error(err)
+    //     }
+    //     console.log(tokenResponse.accessToken)
+    //     console.log("token response:")
+    //     console.log(tokenResponse)
+    //     token = tokenResponse.idToken
+    //     if (token === undefined) {
+    //         console.log("redirecting to logout")
+    //         logout()
+    //     }
+    //
+    //     console.log("token set: " + token)
+    // }
 
     const [value, setValue] = useState(0);
     const [loaded, setLoaded] = useState(false);
@@ -233,7 +233,6 @@ function OCRResultTabs(props) {
 
     }
 
-
     const handleChange = (event, newValue) => {
         setValue(newValue);
     };
@@ -245,48 +244,56 @@ function OCRResultTabs(props) {
         )
     }) : ""
 
+    // https://aczntrm5puua7xucuaczely4ti0hixgo.lambda-url.eu-central-1.on.aws/
     async function getDownloadUrlImage(index, processId, documentId) {
         let tmpImageUrlToLoad = resizeArr(imageUrlToLoad, index + 1, null)
         setLoaded(false)
         if (tmpImageUrlToLoad[index] !== null && tmpImageUrlToLoad[index] !== "") {
             return;
         }
-        let url = window.BACKEND + "/ocr_process/" + processId + "/ocr_documents/" + documentId + "/download";
-        await RequestAccessToken()
-        if (!tenant) {
-            if (window.STAGE !== "MAIN") {
-                tenant = "SCB"
-            }
-        }
-        console.log("tenant to use:")
-        console.log(tenant)
-        await axios({
-            method: "GET",
-            url: url,
-            validateStatus: () => true,
-            headers: {
-                "Authorization": "Bearer " + token,
-                "accept": "application/json",
-                "content-type": "application/json",
-                "tenant-id": tenant
-            }
-        }).then(response => {
-            console.log(response);
+        let url = "https://aczntrm5puua7xucuaczely4ti0hixgo.lambda-url.eu-central-1.on.aws/ocr_process/" + processId + "/ocr_documents/" + documentId + "/download";
+
+        let response = await authenticateLambda("GET", url)
+        if (response !== null) {
+            console.log(response)
             let tmpImageUrlToLoad = resizeArr(imageUrlToLoad, index + 1, null)
-            if (response.status !== 200) {
-                tmpImageUrlToLoad[index] = "";
-            } else {
-                tmpImageUrlToLoad[index] = response.data.downloadUrl
-            }
+            tmpImageUrlToLoad[index] = response.downloadUrl
             setImageUrlToLoad(tmpImageUrlToLoad)
             setTmpLoaded(Math.floor(Math.random() * 100) + 2)
-        }).catch(err => {
-            console.log(err);
+        } else {
+            console.log("Error");
             let tmpImageUrlToLoad = resizeArr(imageUrlToLoad, index + 1, null)
             tmpImageUrlToLoad[index] = "";
             setImageUrlToLoad(tmpImageUrlToLoad)
             setTmpLoaded(Math.floor(Math.random() * 100) + 2)
-        })
+        }
+        // await axios({
+        //     method: "GET",
+        //     url: url,
+        //     validateStatus: () => true,
+        //     headers: {
+        //         "Authorization": "Bearer " + token,
+        //         "accept": "application/json",
+        //         "content-type": "application/json",
+        //         "santander-tenant-id": tenant
+        //     }
+        // }).then(response => {
+        //     console.log(response);
+        //     let tmpImageUrlToLoad = resizeArr(imageUrlToLoad, index + 1, null)
+        //     if (response.status !== 200) {
+        //         tmpImageUrlToLoad[index] = "";
+        //     } else {
+        //         tmpImageUrlToLoad[index] = response.data.downloadUrl
+        //     }
+        //     setImageUrlToLoad(tmpImageUrlToLoad)
+        //     setTmpLoaded(Math.floor(Math.random() * 100) + 2)
+        // }).catch(err => {
+        //     console.log(err);
+        //     let tmpImageUrlToLoad = resizeArr(imageUrlToLoad, index + 1, null)
+        //     tmpImageUrlToLoad[index] = "";
+        //     setImageUrlToLoad(tmpImageUrlToLoad)
+        //     setTmpLoaded(Math.floor(Math.random() * 100) + 2)
+        // })
     }
 
     async function onViewImageClick(index) {
@@ -472,8 +479,14 @@ function OCRResultTabs(props) {
         <div>
             <TabsContainer>
                 <Stack>
-                    <Box sx={{borderBottom: 1, borderColor: 'divider', maxWidth: { xs: 320, sm: 600, md: 900, lg: 1200 }, bgcolor: 'background.paper' }}>
-                        <Tabs value={value} onChange={handleChange} aria-label="scrollable force basic tabs" variant="scrollable" scrollButtons allowScrollButtonsMobile>
+                    <Box sx={{
+                        borderBottom: 1,
+                        borderColor: 'divider',
+                        maxWidth: {xs: 320, sm: 600, md: 900, lg: 1200},
+                        bgcolor: 'background.paper'
+                    }}>
+                        <Tabs value={value} onChange={handleChange} aria-label="scrollable force basic tabs"
+                              variant="scrollable" scrollButtons allowScrollButtonsMobile>
                             {docuTabs}
                         </Tabs>
                         {docuTabPanels}
