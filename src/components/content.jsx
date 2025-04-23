@@ -3,6 +3,7 @@ import {JSONTree} from 'react-json-tree';
 import OCRResultTabs from "./ocrResultTab";
 import axios from 'axios';
 import UploadContainer, {BannerContainer, BannerContent, BannerImage, CardContainer} from '.././styles/banner';
+import pexonImage from '.././assets/pexon_icon.png';
 import {
     Accordion,
     AccordionDetails,
@@ -67,6 +68,24 @@ function Content() {
     const [versionData, setVersionData] = useState()
     const [open, setOpen] = useState(false);
 
+
+    useEffect(() => {
+        // This function will be called once when the component mounts
+        myLoadingFunction();
+    }, []); // Empty array ensures it runs only once
+
+    function myLoadingFunction() {
+        // Your loading logic here
+        setAccessKeyId(() => {
+            updatedAccessKeyId.current = properties.accessKeyId;
+            return properties.accessKeyId
+        })
+        setSecretAccessKey(() => {
+            updatedAccessKeyId.current = properties.secretAccessKey;
+            return properties.secretAccessKey
+        })
+    }
+
     // State to store parsed data
     const [parsedData, setParsedData] = useState([]);
 
@@ -83,9 +102,9 @@ function Content() {
         height: height, width: width
     }
 
-    const {instance, accounts, inProgress} = useMsal();
-    let token = ""
-    const [prevtoken, setPrevtoken] = useState('');
+    // const {instance, accounts, inProgress} = useMsal();
+    // let token = ""
+    // const [prevtoken, setPrevtoken] = useState('');
 
     let testFile: File;
 
@@ -109,8 +128,6 @@ function Content() {
         console.log("method: " + method)
         console.log("data: " + data)
         console.log("headers: " + headers)
-        console.log("accessKeyId: " + updatedAccessKeyId.current)
-        console.log("secretAccessKey: " + updatedSecretAccessKey.current)
 
         const response = await aws.fetch(url, {
             method: method, headers: {
@@ -543,7 +560,7 @@ function Content() {
     }
 
     useEffect(() => {
-        document.title = "Pexon OCR Demo " + window.STAGE + " Application";
+        document.title = "Pexon OCR Demo";
         // RequestAccessToken()
     })
 
@@ -565,40 +582,40 @@ function Content() {
 
     return (<Stack spacing={2} alignItems="center">
 
-        <Popup
-            trigger={<Button type="submit">System Info</Button>}>
-            {() => (<div>
-                {versionPresent ? (<div>
-                    <div>
-                        <h3>System Info</h3>
-                        <p><b>Frontend Version:</b> {version}</p>
-                        <p><b>Signed URL Function:</b> {versionData.signedurlversion}</p>
-                        <p><b>Preprocessing Function:</b> {versionData.preprocessingVersion}</p>
-                        <p><b>Processing Function:</b> {versionData.processingVersion}</p>
-                        <p><b>Status Function:</b> {versionData.statusVersion}</p>
-                    </div>
-                </div>) : (<div>
-                    <div>
-                        <h3>System Info</h3>
-                        <p><b>Frontend Version:</b> {version}</p>
-                        <p><b>Signed URL Function:</b> {"call the service first"}</p>
-                        <p><b>Preprocessing Function:</b> {"call the service first"}</p>
-                        <p><b>Processing Function:</b> {"call the service first"}</p>
-                        <p><b>Status Function:</b> {"call the service first"}</p>
-                    </div>
-                </div>)}
-            </div>)}
-        </Popup>
+        {/*<Popup*/}
+        {/*    trigger={<Button type="submit">System Info</Button>}>*/}
+        {/*    {() => (<div>*/}
+        {/*        {versionPresent ? (<div>*/}
+        {/*            <div>*/}
+        {/*                <h3>System Info</h3>*/}
+        {/*                <p><b>Frontend Version:</b> {version}</p>*/}
+        {/*                <p><b>Signed URL Function:</b> {versionData.signedurlversion}</p>*/}
+        {/*                <p><b>Preprocessing Function:</b> {versionData.preprocessingVersion}</p>*/}
+        {/*                <p><b>Processing Function:</b> {versionData.processingVersion}</p>*/}
+        {/*                <p><b>Status Function:</b> {versionData.statusVersion}</p>*/}
+        {/*            </div>*/}
+        {/*        </div>) : (<div>*/}
+        {/*            <div>*/}
+        {/*                <h3>System Info</h3>*/}
+        {/*                <p><b>Frontend Version:</b> {version}</p>*/}
+        {/*                <p><b>Signed URL Function:</b> {"call the service first"}</p>*/}
+        {/*                <p><b>Preprocessing Function:</b> {"call the service first"}</p>*/}
+        {/*                <p><b>Processing Function:</b> {"call the service first"}</p>*/}
+        {/*                <p><b>Status Function:</b> {"call the service first"}</p>*/}
+        {/*            </div>*/}
+        {/*        </div>)}*/}
+        {/*    </div>)}*/}
+        {/*</Popup>*/}
 
         <CardContainer>
             <Card>
                 <CardContent>
                     <BannerContainer>
                         <BannerImage
-                            src="https://pexon-consulting.de/wp-content/uploads/2022/03/PexonConsulting-59-min.png"></BannerImage>
+                            src={pexonImage}></BannerImage>
                     </BannerContainer>
                     <BannerContent>
-                        <Typography variant="h6">Pexon OCR Demo Application</Typography>
+                        <Typography variant="h6">Pexon OCR Demo</Typography>
                     </BannerContent>
 
                     <Stack spacing={2}>
@@ -615,10 +632,10 @@ function Content() {
 
                             <AccordionDetails>
                                 <Stack spacing={2}>
-                                    <TextField id="accessKeyId" label="Access Key Id"
+                                    <TextField id="accessKeyId" label="Access Key Id" type="password"
                                                variant="standard"
                                                name="accessKeyId" value={accessKeyId} onChange={handleAccessKeyId}/>
-                                    <TextField id="secretAccessKey" label="Secret Access Key"
+                                    <TextField id="secretAccessKey" label="Secret Access Key" type="password"
                                                variant="standard"
                                                name="secretAccessKey" value={secretAccessKey}
                                                onChange={handleSecretAccessKey}/>
@@ -659,56 +676,38 @@ function Content() {
                             <TextField id="documentId" label="Filter by document ID" variant="standard"
                                        name="documentId" value={documentId} onChange={handleDocumentId}
                                        fullWidth/>
-                            {isSearching && <CircularProgress style={{width: "40px"}}/>}
+                            {/*{isSearching && <CircularProgress style={{width: "40px"}}/>}*/}
+                            {isSearching && <CircularProgress sx={
+                                {
+                                    animation: 'none',
+                                    margin: 'auto',
+                                }
+                            }/>}
                         </Stack>
                     </Stack>
                 </CardContent>
                 <CardActions>
-                    <Button variant="text" onClick={() => {
-                        setDebugSelected(!debugSelected);
-                    }}> {debugSelected ? 'Debug On' : 'Debug Off'}
-                    </Button>
-                    <div onChange={onExtendedValue}>
-                        <input type={"radio"} value="MIN" name="extended"/> Min
-                        <input type={"radio"} value="MED" name="extended"/> Med
-                        <input type={"radio"} value="MAX" name="extended"/> Max
-                    </div>
+                    {/*<Button variant="text" onClick={() => {*/}
+                    {/*    setDebugSelected(!debugSelected);*/}
+                    {/*}}> {debugSelected ? 'Debug On' : 'Debug Off'}*/}
+                    {/*</Button>*/}
+                    {/*<div onChange={onExtendedValue}>*/}
+                    {/*    <input type={"radio"} value="MIN" name="extended"/> Min*/}
+                    {/*    <input type={"radio"} value="MED" name="extended"/> Med*/}
+                    {/*    <input type={"radio"} value="MAX" name="extended"/> Max*/}
+                    {/*</div>*/}
                     {/*<Button variant="text" onClick={() => {*/}
                     {/*    setExtended(!extendedSelected);*/}
                     {/*}*/}
                     {/*}> {extendedSelected ? 'Extended On' : 'Extended Off'}*/}
                     {/*</Button>*/}
                     <Button type="submit" onClick={onSearch}>Search</Button>
-                    <Button variant="submit" onClick={onDownload}>Download</Button>
+                    {/*<Button variant="submit" onClick={onDownload}>Download</Button>*/}
                     {/*<Button type="submit" onClick={openCSV}>Open FSA Report</Button>*/}
 
                 </CardActions>
             </Card>
         </CardContainer>
-        {isOpenCsv && <NewWindow title={"FSA Report"} name={"FSA Report"} center={"screen"} copyStyles={true}
-                                 features={windowFeatures}>
-            <div>
-                <table border="1px solid black">
-                    <thead>
-                    <tr>
-                        {tableRows.map((rows, index) => {
-                            return <th key={index}>{rows}</th>;
-                        })}
-                    </tr>
-                    </thead>
-                    <tbody>
-                    {values.map((value, index) => {
-                        return (<tr key={index}>
-                            {value.map((val, i) => {
-                                return <td key={i}>{val}</td>;
-                            })}
-                        </tr>);
-                    })}
-                    </tbody>
-                </table>
-                <Button type="submit" onClick={() => setOpenCsv(false)}>Close</Button>
-            </div>
-        </NewWindow>}
 
         {isFetched && <Stack style={{width: '90%'}}> <CardContainer><OCRResultTabs
             data={isOneDocumentRetreive ? {

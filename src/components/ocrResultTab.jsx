@@ -147,17 +147,26 @@ function OCRResultTabs(props) {
     const getTextByType = (type1, subtype, labels) => {
         if (type1 === "CARD_ID") {
             if (subtype === "DE_CARD_ID") {
-                return "German Card ID";
+                return "Deutscher Personalausweis";
             } else {
-                return "Card ID (" + subtype + ")";
+                return "Ausweis (" + subtype + ")";
             }
         }
         if (type1 === "PASSPORT") {
             if (subtype === "DE_PASSPORT") {
-                return "Reisepass"
+                return "Deutscher Reisepass"
             } else {
-                return "Passport (" + subtype + ")"
+                return "Reisepass (" + subtype + ")"
             }
+        }
+        if (type1 === "CAR_REGISTRATION") {
+            return "KFZ Zulassungsbescheinigung Teil II"
+        }
+        if (type1 === "PAYSLIP") {
+            return "Gehaltsnachweis"
+        }
+        if (type1 === "UNCLASSIFIED") {
+            return "Unklassifiziert";
         }
         let result = type1 + " - " + subtype
         if (labels != null && labels.length >= 2) {
