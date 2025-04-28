@@ -20,7 +20,7 @@ import {
 import 'react-dropdown/style.css';
 import {useDropzone} from "react-dropzone";
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
-import properties from '.././config/properties.json';
+// import properties from '.././config/properties.json';
 import {useMsal} from "@azure/msal-react";
 import Papa from "papaparse"
 import NewWindow from 'react-new-window'
@@ -45,18 +45,18 @@ function Content() {
     const [isOpenCsv, setOpenCsv] = useState(false);
     const [versionPresent, setVersionPresent] = useState(false);
     const [err, setErr] = useState('');
-    const [deviceId, setDeviceId] = useState(properties.defaultDeviceId);
-    const [features, setFeatures] = useState(properties.defaultFeatures);
-    const [requesterApplication, setRequesterApplication] = useState(properties.defaultRequester);
+    const [deviceId, setDeviceId] = useState();
+    const [features, setFeatures] = useState();
+    const [requesterApplication, setRequesterApplication] = useState();
     const [documentType, setDocumentType] = useState("");
     const [tenant, setTenant] = useState('');
     const [processId, setProcessId] = useState('');
     const [documentId, setDocumentId] = useState('');
     const [downloadUrl, setDownloadUrl] = useState('');
-    const [debugSelected, setDebugSelected] = useState(properties.defaultDebug === "true");
-    const [accessKeyId, setAccessKeyId] = useState()
+    const [debugSelected, setDebugSelected] = useState("true");
+    const [accessKeyId, setAccessKeyId] = useState('')
     const updatedAccessKeyId = useRef(accessKeyId)
-    const [secretAccessKey, setSecretAccessKey] = useState()
+    const [secretAccessKey, setSecretAccessKey] = useState('')
     const updatedSecretAccessKey = useRef(secretAccessKey)
     const [extended, setExtended] = useState('MAX');
     const updatedDeviceId = useRef(deviceId);
@@ -69,22 +69,24 @@ function Content() {
     const [open, setOpen] = useState(false);
 
 
-    useEffect(() => {
-        // This function will be called once when the component mounts
-        myLoadingFunction();
-    }, []); // Empty array ensures it runs only once
-
-    function myLoadingFunction() {
-        // Your loading logic here
-        setAccessKeyId(() => {
-            updatedAccessKeyId.current = properties.accessKeyId;
-            return properties.accessKeyId
-        })
-        setSecretAccessKey(() => {
-            updatedAccessKeyId.current = properties.secretAccessKey;
-            return properties.secretAccessKey
-        })
-    }
+    // useEffect(() => {
+    //     // This function will be called once when the component mounts
+    //     myLoadingFunction();
+    // }, []); // Empty array ensures it runs only once
+    //
+    // function myLoadingFunction() {
+    //     // Your loading logic here
+    //     setAccessKeyId(() => {
+    //         updatedAccessKeyId.current = properties.accessKeyId;
+    //         console.log("setAccessKeyId", updatedAccessKeyId.current);
+    //         return properties.accessKeyId
+    //     })
+    //     setSecretAccessKey(() => {
+    //         updatedSecretAccessKey.current = properties.secretAccessKey;
+    //         console.log("setSecretAccessKey", updatedAccessKeyId.current);
+    //         return properties.secretAccessKey
+    //     })
+    // }
 
     // State to store parsed data
     const [parsedData, setParsedData] = useState([]);
@@ -120,6 +122,8 @@ function Content() {
 
     async function sendRequestToLambda(method, url, data, headers) {
         console.log("sending request to lambda:")
+        console.log("accessKeyId: " + updatedAccessKeyId.current)
+        console.log("secretAccessKey: " + updatedSecretAccessKey.current)
         const aws = new AwsClient({
             accessKeyId: updatedAccessKeyId.current, secretAccessKey: updatedSecretAccessKey.current
         })
